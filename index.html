@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EV Port · Energy-Aware EV Network &amp; Optimal Routing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="vendor/leaflet.css?v=8.0.1" />
+  <link rel="stylesheet" href="app.css?v=8.0.1" />
+</head>
+<body>
+  <!-- Header / Navigation Bar -->
+  <header class="site-header">
+    <a href="index.html" class="brand-wrapper">
+      <div class="brand-logo-icon">⚡</div>
+      <div class="brand-title-wrap">
+        <b>Ev <span>Port</span> <span class="badge-version">v8.0 Ultra</span></b>
+        <small>Energy-Aware EV Routing &amp; Charging Network</small>
+      </div>
+    </a>
+
+    <!-- Center Studio Navigation -->
+    <nav class="studio-nav" aria-label="Studio selection">
+      <a href="index.html" class="studio-nav-item active">⚡ VoltPath EV</a>
+      <a href="lab.html" class="studio-nav-item">🧪 Route Lab</a>
+    </nav>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <button id="btnHeaderGps" class="btn-pill secondary-cyan" style="font-weight:600;display:inline-flex;align-items:center;gap:5px" title="Detect Live GPS Location"><span class="pulse-ring-dot"></span> 📍 Live GPS</button>
+      <button id="btnFleetModal" class="btn-pill" title="Compare Indian EV models">🚘 Fleet Specs</button>
+      <div id="sync" class="sync-status on">
+        <span class="pulse-beacon"></span>
+        <span id="syncText">● Live Sync</span>
+      </div>
+      <span id="clock" class="btn-pill mono" style="font-size:0.75rem;">--:--:-- IST</span>
+    </div>
+  </header>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <main class="layout">
+    <aside class="panel">
+      <!-- Tabs -->
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="ev" role="tab" aria-selected="true">⚡ EV Route</button>
+        <button class="tab" data-tab="low" role="tab" aria-selected="false">🔋 Battery SOS</button>
+        <button class="tab" data-tab="map" role="tab" aria-selected="false">🛰 Map &amp; Ports</button>
+      </nav>
+
+      <!-- TAB 1: EV ROUTE -->
+      <div class="pane active" id="pane-ev">
+        <!-- Quick Preset Corridors -->
+        <section style="padding-bottom:12px">
+          <h2>Popular Corridors <small>1-click route presets</small></h2>
+          <div class="preset-carousel" id="presetCarousel">
+            <button class="preset-chip" data-from="coimbatore" data-to="ooty" data-car="nexon">
+              <span class="preset-chip-tag">Mountain / Regen</span>
+              <span class="preset-chip-title">Coimbatore ➔ Ooty</span>
+              <span class="preset-chip-sub">Ghat climb · 1900m ascent</span>
+            </button>
+            <button class="preset-chip" data-from="chennai" data-to="coimbatore" data-car="zs">
+              <span class="preset-chip-tag">Industrial Trunk</span>
+              <span class="preset-chip-title">Chennai ➔ Coimbatore</span>
+              <span class="preset-chip-sub">505 km · NH48/NH544</span>
+            </button>
+            <button class="preset-chip" data-from="chennai" data-to="madurai" data-car="curvv">
+              <span class="preset-chip-tag">Cultural Spine</span>
+              <span class="preset-chip-title">Chennai ➔ Madurai</span>
+              <span class="preset-chip-sub">460 km · NH44 Corridor</span>
+            </button>
+            <button class="preset-chip" data-from="madurai" data-to="rameswaram" data-car="tiago">
+              <span class="preset-chip-tag">Coastal Highway</span>
+              <span class="preset-chip-title">Madurai ➔ Rameswaram</span>
+              <span class="preset-chip-sub">170 km · Pamban route</span>
+            </button>
+            <button class="preset-chip" data-from="hosur" data-to="kanyakumari" data-car="ioniq5">
+              <span class="preset-chip-tag">Epic Highway</span>
+              <span class="preset-chip-title">Hosur ➔ Kanyakumari</span>
+              <span class="preset-chip-sub">650 km · Full TN traverse</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Route Form -->
+        <section>
+          <h2>Plan Optimal EV Route</h2>
+          
+          <label for="evFromSearch">From (Origin)</label>
+          <div class="city-combo">
+            <input type="text" id="evFromSearch" placeholder="🔍 Search city, local area or use current location…" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="evFromList" />
+            <ul class="city-suggest" id="evFromList" role="listbox" hidden></ul>
+            <input type="hidden" id="evFrom" value="" />
+          </div>
+          <button id="evSwap" class="swap-btn" title="Swap Origin and Destination">⇄</button>
+          <label for="evToSearch">To (Destination)</label>
+          <div class="city-combo">
+            <input type="text" id="evToSearch" placeholder="🔍 Search city or local area (e.g. RS Puram, Anna Nagar)…" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="evToList" />
+            <ul class="city-suggest" id="evToList" role="listbox" hidden></ul>
+            <input type="hidden" id="evTo" value="" />
+          </div>
+          
+          <div class="grid2">
+            <label>Vehicle Fleet
+              <select id="evCar"></select>
+            </label>
+            <label>Departure Time
+              <input type="time" id="evDepart" />
+            </label>
+          </div>
+
+          <div class="rng">
+            <div class="rng-header">
+              <span>Battery at Departure</span>
+              <b id="evSocV">80%</b>
+            </div>
+            <input type="range" id="evSoc" min="5" max="100" value="80" />
+          </div>
+
+          <button id="lowHint" class="btn-pill danger" style="width:100%;margin-bottom:10px;" hidden>
+            ⚠️ Battery low? Find nearest fast charger
+          </button>
+
+          <div class="grid2">
+            <div class="rng">
+              <div class="rng-header">
+                <span>Min Reserve</span>
+                <b id="evReserveV">10%</b>
+              </div>
+              <input type="range" id="evReserve" min="5" max="30" value="10" />
+            </div>
+            <div class="rng">
+              <div class="rng-header">
+                <span>Charge Up To</span>
+                <b id="evTargetV">80%</b>
+              </div>
+              <input type="range" id="evTarget" min="50" max="95" step="5" value="80" />
+            </div>
+          </div>
+
+          <label>Optimization Objective
+            <select id="evMode">
+              <option value="dist">Distance (Shortest Kilometers)</option>
+              <option value="time">Time (Fastest Arrival including charging)</option>
+              <option value="energy">Energy Eco (Minimum kWh consumption)</option>
+            </select>
+          </label>
+
+          <div class="row" style="margin-top:10px">
+            <button id="evGo" class="primary" style="flex:1">⚡ Compute Optimal Route</button>
+          </div>
+        </section>
+
+        <!-- Route Output -->
+        <section id="evOut">
+          <p class="muted">Loading Tamil Nadu road network and live elevations…</p>
+        </section>
+
+        <!-- Weather Section -->
+        <section>
+          <h2>Live Weather at Corridor Ends</h2>
+          <div id="weather" class="grid2"><div class="muted">Loading meteorological forecast…</div></div>
+        </section>
+      </div>
+
+      <!-- TAB 2: LOW BATTERY SOS -->
+      <div class="pane" id="pane-low">
+        <section>
+          <h2>🔋 Battery SOS &amp; Range Finder</h2>
+          
+          <div class="live-location-card">
+            <div class="row" style="align-items:center;justify-content:space-between">
+              <div>
+                <span class="live-badge"><span class="pulse-ring-dot"></span> LIVE LOCATION</span>
+                <div id="hereText" class="live-location-title">📍 <span class="muted">Location not set</span></div>
+              </div>
+              <button id="gpsHere" class="btn-pill primary" style="font-size:0.78rem">📍 Detect GPS</button>
+            </div>
+            <div class="city-combo" style="margin:10px 0 0">
+              <input type="text" id="sosLocSearch" placeholder="🔍 Search your location or use current location…" autocomplete="off" spellcheck="false" role="combobox" aria-label="Search your location" aria-autocomplete="list" aria-expanded="false" aria-controls="sosLocList" />
+              <ul class="city-suggest" id="sosLocList" role="listbox" hidden></ul>
+            </div>
+            <div class="row" style="margin-top:8px;gap:6px">
+              <button id="pickHere" class="btn-pill" style="font-size:0.75rem;flex:1">🗺️ Pick Anywhere on Map</button>
+            </div>
+            <div style="margin-top:10px">
+              <span style="font-size:0.72rem;color:var(--text-dim);display:block;margin-bottom:4px">Quick Tamil Nadu City Location:</span>
+              <div class="city-presets-row" id="cityPresets">
+                <button class="btn-pill-sm" onclick="setCityAsHere('dharmapuri')">Dharmapuri</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('coimbatore')">Coimbatore</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('chennai')">Chennai</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('salem')">Salem</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('hosur')">Hosur</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('madurai')">Madurai</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('trichy')">Trichy</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('ooty')">Ooty</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('tirunelveli')">Tirunelveli</button>
+                <button class="btn-pill-sm" onclick="setCityAsHere('vellore')">Vellore</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="rng">
+            <div class="rng-header">
+              <span>Current Battery State</span>
+              <b id="lowSocV">15%</b>
+            </div>
+            <input type="range" id="lowSoc" min="1" max="100" value="15" />
+          </div>
+
+          <p class="range-text" id="rangeText"></p>
+
+          <div class="row">
+            <button id="findNear" class="secondary-cyan" style="flex:1">🔍 Search Reachable Chargers</button>
+          </div>
+          <p class="muted" style="margin-top:6px;font-size:0.75rem">
+            Dynamic isochrone perimeter based on live battery %, elevation profile, and vehicle Wh/km consumption.
+          </p>
+        </section>
+
+        <section id="nearDetail"></section>
+        <section id="nearOut">
+          <p class="muted">Loading reachable chargers from your live location…</p>
+        </section>
+
+        <!-- BATTERY BANKS NEAR ME -->
+        <section id="bankSec">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <h2 style="margin:0">🔋 Battery Banks Near Me <span class="live-pill">SWAP</span></h2>
+            <button id="bankRefresh" class="btn-pill" style="font-size:0.72rem" title="Refresh swap status">↻ Refresh</button>
+          </div>
+          <p class="muted" style="font-size:0.78rem;margin-bottom:8px">40+ verified EV battery swap hubs across Tamil Nadu (Battery Smart, Sun Mobility, Bounce Infinity, RACEnergy).</p>
+          
+          <div class="grid2" style="margin-bottom:10px">
+            <label style="font-size:0.75rem">Search Radius
+              <select id="bankRadius">
+                <option value="0">Any distance (All TN)</option>
+                <option value="10">Within 10 km</option>
+                <option value="25" selected>Within 25 km</option>
+                <option value="50">Within 50 km</option>
+                <option value="100">Within 100 km</option>
+              </select>
+            </label>
+            <div class="row" style="align-items:flex-end">
+              <button id="bankFind" class="secondary-cyan" style="flex:1;height:38px">🔍 Find Banks</button>
+            </div>
+          </div>
+
+          <div id="bankDetail"></div>
+          <div id="bankOut">
+            <p class="muted">Finding nearest battery swap stations…</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- TAB 3: MAP & PORTS -->
+      <div class="pane" id="pane-map">
+        <!-- Infrastructure Statistics -->
+        <div class="tiles">
+          <div class="tile wide">
+            <span>EV Charging Port Locations Mapped in Tamil Nadu</span>
+            <b id="tPorts" style="color:var(--lime)">–</b>
+          </div>
+          <div class="tile">
+            <span>Official Coverage (PIB TN)</span>
+            <b id="coverage">–</b>
+          </div>
+          <div class="tile">
+            <span>Cities With Hubs</span>
+            <b id="tHubs">–</b>
+          </div>
+          <div class="tile">
+            <span>Vertices (Cities)</span>
+            <b id="tCities">40</b>
+          </div>
+          <div class="tile">
+            <span>Edges (Highways)</span>
+            <b id="tRoads">51</b>
+          </div>
+        </div>
+
+        <!-- Satellite & Map Styles -->
+        <section>
+          <h2>Map Styles &amp; Layers</h2>
+          <div class="sat-btns" id="satBtns" style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn-pill" data-map-style="satellite">🛰️ Satellite</button>
+            <button class="btn-pill active" data-map-style="streets">🗺️ Streets</button>
+            <button class="btn-pill" data-map-style="topo">⛰️ Topo</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button id="fitTN" class="btn-pill secondary-cyan" style="flex:1">🗺 Reset to Tamil Nadu State</button>
+          </div>
+          
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+            <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+              <input type="checkbox" id="showBorder" checked /> State Boundary &amp; Mask
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+              <input type="checkbox" id="showPorts" checked /> All EV Charging Ports
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+              <input type="checkbox" id="showGraph" checked /> National &amp; State Highway Network
+            </label>
+          </div>
+        </section>
+
+        <!-- Ports Search & Filtering -->
+        <section>
+          <h2>Public EV Charging Ports Directory</h2>
+          <p class="muted" id="portSrc">Loading charging ports…</p>
+          
+          <input id="portSearch" placeholder="Filter by city, brand or operator (e.g. Tata, Zeon, Jio-bp, Madurai)..." style="margin-bottom:8px" />
+          
+          <!-- Filter Chips -->
+          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="btn-pill" id="filterAllPorts">All Ports</button>
+            <button class="btn-pill" id="filterFastOnly">⚡ Fast (≥30 kW)</button>
+            <button class="btn-pill" id="filterUltraFast">🚀 Ultra-Fast (≥60 kW)</button>
+          </div>
+
+          <div class="row">
+            <button id="nearMe" class="btn-pill">📍 Nearest To Me</button>
+            <button id="refreshPorts" class="btn-pill">↻ Refresh Live OSM</button>
+          </div>
+
+          <p class="muted" id="portCount" style="margin-top:8px"></p>
+          <ul id="portList" class="roads stations portlist"></ul>
+          
+          <details class="ocm" style="margin-top:12px">
+            <summary style="cursor:pointer;color:var(--emerald-light);font-size:0.8rem">Add Open Charge Map API Key (optional)</summary>
+            <p class="muted" style="margin:6px 0">
+              Open Charge Map contains additional commercial chargers in India. Add a free API key from openchargemap.org to merge.
+            </p>
+            <div class="row">
+              <input id="ocmKey" placeholder="Paste Open Charge Map Key" />
+              <button id="ocmSave" class="btn-pill">Save Key</button>
+            </div>
+          </details>
+        </section>
+
+        <!-- City Stations Availability -->
+        <section>
+          <h2>City Charging Hubs &amp; Predicted Wait</h2>
+          <ul id="stations" class="roads stations"></ul>
+        </section>
+
+        <!-- About Data -->
+        <section>
+          <h2>Data Sources &amp; Mathematical Model</h2>
+          <p class="muted" id="dataNote"></p>
+          <p class="muted">
+            Network: 40 Tamil Nadu cities connected via 51 highway corridors (OSRM driving distance + Copernicus DEM elevations).
+            Official reference: Tamil Nadu has 1,781 public EV charging stations (PIB, Ministry of Power, Aug 2025).
+          </p>
+        </section>
+      </div>
+    </aside>
+
+    <!-- Map Area -->
+    <div class="mapwrap">
+      <div id="map"></div>
+
+      <!-- Floating Map Quick Control HUD -->
+      <div class="map-quick-hud" id="mapQuickHud">
+        <div class="map-style-pill-group" role="group" aria-label="Base Map Style">
+          <button class="map-style-pill" data-map-style="satellite" title="Satellite HD Optical (Esri)">🛰️ Satellite</button>
+          <button class="map-style-pill active" data-map-style="streets" title="Navigation Streets (OpenStreetMap)">🗺️ Streets</button>
+          <button class="map-style-pill" data-map-style="topo" title="Topographic Elevation (OpenTopoMap)">⛰️ Topo</button>
+        </div>
+        <div class="map-action-pill-group" role="group" aria-label="Map Overlays and Tools">
+          <button class="map-action-pill active" id="btnTogglePorts" title="Toggle EV Charging Ports">⚡ Ports</button>
+          <button class="map-action-pill active" id="btnToggleBanks" title="Toggle Battery Swapping Banks">🔋 Banks</button>
+          <button class="map-action-pill active" id="btnToggleHighways" title="Toggle Highway Graph">🛣️ Highways</button>
+          <button class="map-action-pill" id="btnLocateMe" title="Locate My EV (GPS)">📍 GPS</button>
+          <button class="map-action-pill" id="btnResetBounds" title="Fit Tamil Nadu State">🎯 Fit TN</button>
+          <button class="map-action-pill" id="btnFullscreen" title="Toggle Fullscreen">⛶</button>
+        </div>
+      </div>
+
+      <!-- Floating Elevation Crosshair Readout -->
+      <div id="elevScrubCard" class="elev-scrub-card" hidden></div>
+
+      <div id="hud" class="hud" hidden></div>
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <span id="loadingText">Initializing Tamil Nadu EV Network…</span>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </main>
+
+  <!-- MODAL: Fleet Comparison Matrix -->
+  <div id="modalFleet" class="modal-backdrop" hidden>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>🚘 Indian EV Fleet Comparison Matrix</h3>
+        <button class="modal-close" onclick="closeModal('modalFleet')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="muted" style="margin-bottom:12px">
+          Specifications for popular electric vehicles in India calibrated with real-world energy consumption and DC fast charging curves.
+        </p>
+        <table class="fleet-table">
+          <thead>
+            <tr>
+              <th>Vehicle Model</th>
+              <th>Battery Pack</th>
+              <th>Real Range</th>
+              <th>Avg Efficiency</th>
+              <th>Max DC Charging</th>
+              <th>Battery Chem</th>
+            </tr>
+          </thead>
+          <tbody id="fleetTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Export Itinerary -->
+  <div id="modalExport" class="modal-backdrop" hidden>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>📋 Route Itinerary Manifest</h3>
+        <button class="modal-close" onclick="closeModal('modalExport')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="itineraryText" readonly style="width:100%;height:220px;font-family:var(--font-mono);font-size:0.8rem;padding:10px;margin-bottom:12px;background:rgba(3,7,18,0.9);color:var(--lime);border:1px solid var(--line)"></textarea>
+        <div class="row">
+          <button id="btnCopyItinerary" class="primary">📋 Copy to Clipboard</button>
+          <button id="btnOpenGMaps" class="secondary-cyan">🧭 Navigate in app</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts (Offline-first with local vendor Leaflet & Cache-busting) -->
+  <script src="vendor/leaflet.js?v=8.0.1"></script>
+  <script src="evcore.js?v=8.0.1"></script>
+  <script src="app.js?v=8.0.1"></script>
+</body>
+</html>

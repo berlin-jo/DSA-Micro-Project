@@ -1,0 +1,27 @@
+{
+  "name": "voltpath-tamil-nadu",
+  "version": "8.0.0",
+  "description": "State-of-the-art energy-aware EV route planner across Tamil Nadu with offline-first multi-layer maps, interactive elevation & battery SoC cross-section, turn-by-turn simulation HUD and Route Lab. Zero dependencies.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "electric-vehicle",
+    "ev-routing",
+    "graph-theory",
+    "dijkstra",
+    "astar",
+    "tamil-nadu",
+    "energy-aware",
+    "coimbatore",
+    "openstreetmap"
+  ],
+  "author": "VoltPath Team",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}

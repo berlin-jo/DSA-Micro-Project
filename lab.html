@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Route Lab · Dijkstra vs A*, Step Animator &amp; Road Closures</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="vendor/leaflet.css" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <!-- Header / Navigation Bar -->
+  <header class="site-header">
+    <a href="index.html" class="brand-wrapper">
+      <div class="brand-logo-icon">🧪</div>
+      <div class="brand-title-wrap">
+        <b>Route Lab <span>Algorithm Studio</span></b>
+        <small>Graph Search, Step Animator &amp; Road Closures</small>
+      </div>
+    </a>
+
+    <!-- Center Studio Navigation -->
+    <nav class="studio-nav" aria-label="Studio selection">
+      <a href="index.html" class="studio-nav-item">⚡ VoltPath EV</a>
+      <a href="lab.html" class="studio-nav-item active">🧪 Route Lab</a>
+    </nav>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <div id="dataNote" class="sync-status on">
+        <span class="pulse-beacon"></span>
+        <span>● Real Road Network</span>
+      </div>
+      <a href="index.html" class="btn-pill primary">⚡ Back to EV Router</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel">
+      <!-- Network & Metric Selector -->
+      <div style="padding:14px;background:rgba(7,13,24,0.6);border-bottom:1px solid var(--line)">
+        <div class="grid2">
+          <label>Network Scenario
+            <select id="labData">
+              <option value="cbe">Coimbatore Arterial Roads (Real OSRM Map)</option>
+              <option value="campus">Karunya University Campus (Walking Paths)</option>
+            </select>
+          </label>
+          <label id="metricWrap">Edge Cost Metric
+            <select id="labMetric">
+              <option value="dist">Driving Distance (km)</option>
+              <option value="time">Travel Time (min)</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid2">
+          <label>Origin
+            <select id="labFrom"></select>
+          </label>
+          <label>Destination
+            <select id="labTo"></select>
+          </label>
+        </div>
+      </div>
+
+      <!-- Segment Tabs -->
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-t="route">🎯 Shortest &amp; Alts</button>
+        <button class="tab" data-t="anim">▶ Step Animator</button>
+        <button class="tab" data-t="cmp">⚖ A* vs Dijkstra</button>
+        <button class="tab" data-t="close">🚧 Road Closures</button>
+      </nav>
+
+      <!-- TAB 1: SHORTES & ALTS -->
+      <div class="pane active" id="p-route">
+        <section id="why"></section>
+        <section>
+          <h2>Yen's K-Shortest Alternative Routes</h2>
+          <div id="alts"></div>
+        </section>
+      </div>
+
+      <!-- TAB 2: STEP ANIMATOR -->
+      <div class="pane" id="p-anim">
+        <section>
+          <h2>Dijkstra Algorithm Interactive Execution</h2>
+          <div class="row" style="margin-bottom:10px">
+            <button id="aBack" class="btn-pill" title="Step Back">⏮ Prev</button>
+            <button id="aPlay" class="btn-pill primary" style="flex:2">▶ Auto Play</button>
+            <button id="aNext" class="btn-pill" title="Step Forward">Next ⏭</button>
+          </div>
+          
+          <div class="rng">
+            <div class="rng-header">
+              <span>Execution Step</span>
+              <b id="aStepV">0 / 0</b>
+            </div>
+            <input type="range" id="aStep" min="0" max="0" value="0" />
+          </div>
+
+          <div class="rng">
+            <div class="rng-header">
+              <span>Playback Speed</span>
+              <span class="muted" id="aSpeedVal">1.0s</span>
+            </div>
+            <input type="range" id="aSpeed" min="200" max="2000" step="100" value="1000" />
+          </div>
+
+          <div id="stepInfo" style="padding:10px 12px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.25);border-radius:10px;font-size:0.8rem;margin:10px 0;line-height:1.5"></div>
+          
+          <div id="dtable" style="max-height:240px;overflow-y:auto;border:1px solid var(--line);border-radius:8px"></div>
+          
+          <p class="muted" style="margin-top:10px;line-height:1.5">
+            <span class="dot" style="background:#38bdf8"></span> Visiting Vertex · 
+            <span class="dot" style="background:#34d399"></span> Settled / Finalized · 
+            <span class="dot" style="background:#fbbf24"></span> In Priority Frontier · 
+            Yellow Road = Edge Being Relaxed
+          </p>
+        </section>
+      </div>
+
+      <!-- TAB 3: COMPARE -->
+      <div class="pane" id="p-cmp">
+        <section>
+          <h2>Benchmarking: Dijkstra vs A* Search</h2>
+          <div id="cmpOut"></div>
+        </section>
+      </div>
+
+      <!-- TAB 4: CLOSURES -->
+      <div class="pane" id="p-close">
+        <section>
+          <h2>Simulate Road Incident &amp; Detours</h2>
+          <label>Select Road Segment
+            <select id="cEdge"></select>
+          </label>
+          <div class="row">
+            <button id="cToggle" class="danger">🚧 Close / Reopen Road</button>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button id="cBest" class="btn-pill">Simulate Blockage on Best Route</button>
+            <button id="cClear" class="btn-pill">Reopen All</button>
+          </div>
+          <p class="muted" style="margin-top:8px">
+            Tip: You can also tap any road directly on the interactive map to simulate a real-time closure. The optimal path, alternatives, and step execution will immediately recalculate!
+          </p>
+          <div id="cList" style="margin-top:10px"></div>
+        </section>
+      </div>
+    </aside>
+
+    <!-- Map Container -->
+    <div class="mapwrap">
+      <div id="map"></div>
+      <div class="legend" id="labLegend"></div>
+    </div>
+  </main>
+
+  <script src="vendor/leaflet.js"></script>
+  <script src="lab.js"></script>
+</body>
+</html>
